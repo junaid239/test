@@ -2,6 +2,7 @@
 /**
  * Plugin Name: VoIP Office Homepage Builder
  * Description: Converts a static VoIP Office homepage into a shortcode-driven WordPress plugin with dashboard-managed options.
+ * Version: 1.1.0
  * Version: 1.0.0
  * Author: VoIP Office
  */
@@ -58,6 +59,10 @@ class VoipOfficeHomepagePlugin {
             'hero_metric_3_value', 'hero_metric_3_label', 'hero_metric_4_value', 'hero_metric_4_label',
             'color_dark_primary', 'color_accent', 'color_light_gray', 'color_white',
             'hero_desktop_heading_size', 'hero_tablet_heading_size', 'hero_mobile_heading_size',
+            'hero_desktop_padding', 'hero_tablet_padding', 'hero_mobile_padding',
+            'desktop_breakpoint', 'tablet_breakpoint', 'mobile_breakpoint',
+            'global_section_padding_desktop', 'global_section_padding_tablet', 'global_section_padding_mobile',
+            'global_base_font_desktop', 'global_base_font_tablet', 'global_base_font_mobile'
             'hero_desktop_padding', 'hero_tablet_padding', 'hero_mobile_padding'
         );
 
@@ -68,16 +73,39 @@ class VoipOfficeHomepagePlugin {
         $output['hero_stack_breakpoint'] = absint($output['hero_stack_breakpoint']);
         $output['hero_stack_breakpoint'] = $output['hero_stack_breakpoint'] > 0 ? $output['hero_stack_breakpoint'] : 992;
 
+        $output['desktop_breakpoint'] = absint($output['desktop_breakpoint']);
+        $output['desktop_breakpoint'] = $output['desktop_breakpoint'] > 0 ? $output['desktop_breakpoint'] : 1200;
+
+        $output['tablet_breakpoint'] = absint($output['tablet_breakpoint']);
+        $output['tablet_breakpoint'] = $output['tablet_breakpoint'] > 0 ? $output['tablet_breakpoint'] : 992;
+
+        $output['mobile_breakpoint'] = absint($output['mobile_breakpoint']);
+        $output['mobile_breakpoint'] = $output['mobile_breakpoint'] > 0 ? $output['mobile_breakpoint'] : 768;
+
+        $output['hero_force_stacked_mobile'] = !empty($input['hero_force_stacked_mobile']) ? 1 : 0;
+        $output['remove_button_underline'] = !empty($input['remove_button_underline']) ? 1 : 0;
+
+        $output['image_overrides'] = array();
+        if (!empty($input['image_overrides']) && is_array($input['image_overrides'])) {
+            foreach ($input['image_overrides'] as $idx => $url) {
+                $index = absint($idx);
+                $output['image_overrides'][$index] = esc_url_raw($url);
+            }
+        }
         $output['hero_force_stacked_mobile'] = !empty($input['hero_force_stacked_mobile']) ? 1 : 0;
 
         if (current_user_can('unfiltered_html')) {
             $output['template_html'] = (string) $output['template_html'];
             $output['custom_css'] = (string) $output['custom_css'];
             $output['custom_js'] = (string) $output['custom_js'];
+            $output['responsive_css_tablet'] = (string) $output['responsive_css_tablet'];
+            $output['responsive_css_mobile'] = (string) $output['responsive_css_mobile'];
         } else {
             $output['template_html'] = wp_kses_post($output['template_html']);
             $output['custom_css'] = sanitize_textarea_field($output['custom_css']);
             $output['custom_js'] = sanitize_textarea_field($output['custom_js']);
+            $output['responsive_css_tablet'] = sanitize_textarea_field($output['responsive_css_tablet']);
+            $output['responsive_css_mobile'] = sanitize_textarea_field($output['responsive_css_mobile']);
         }
 
         return $output;
@@ -85,6 +113,7 @@ class VoipOfficeHomepagePlugin {
 
     public function render_admin_page() {
         $options = wp_parse_args(get_option(self::OPTION_KEY, array()), $this->get_default_options());
+        $template_images = $this->extract_template_images($options['template_html']);
         ?>
         <div class="wrap">
             <h1>VoIP Office Homepage Builder</h1>
@@ -120,6 +149,31 @@ class VoipOfficeHomepagePlugin {
                     <?php $this->render_input_row($options, 'hero_metric_4_label', 'Metric 4 Label'); ?>
                 </table>
 
+                <h2>All Images on Homepage</h2>
+                <p>Every detected &lt;img&gt; on your homepage can be overridden here without editing HTML.</p>
+                <table class="form-table" role="presentation">
+                    <?php foreach ($template_images as $image): ?>
+                        <tr>
+                            <th scope="row"><?php echo esc_html('Image #' . ($image['index'] + 1)); ?></th>
+                            <td>
+                                <p><code><?php echo esc_html($image['original_src']); ?></code></p>
+                                <input type="url" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[image_overrides][<?php echo esc_attr($image['index']); ?>]" value="<?php echo esc_attr(isset($options['image_overrides'][$image['index']]) ? $options['image_overrides'][$image['index']] : ''); ?>" placeholder="Leave empty to keep original image">
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+
+                <h2>Responsive Controls</h2>
+                <table class="form-table" role="presentation">
+                    <?php $this->render_input_row($options, 'desktop_breakpoint', 'Desktop Breakpoint (px)'); ?>
+                    <?php $this->render_input_row($options, 'tablet_breakpoint', 'Tablet Breakpoint (px)'); ?>
+                    <?php $this->render_input_row($options, 'mobile_breakpoint', 'Mobile Breakpoint (px)'); ?>
+                    <?php $this->render_input_row($options, 'global_base_font_desktop', 'Desktop Base Font Size (example: 16px)'); ?>
+                    <?php $this->render_input_row($options, 'global_base_font_tablet', 'Tablet Base Font Size (example: 15px)'); ?>
+                    <?php $this->render_input_row($options, 'global_base_font_mobile', 'Mobile Base Font Size (example: 14px)'); ?>
+                    <?php $this->render_input_row($options, 'global_section_padding_desktop', 'Global Section Padding Desktop (example: 60px 30px)'); ?>
+                    <?php $this->render_input_row($options, 'global_section_padding_tablet', 'Global Section Padding Tablet (example: 40px 20px)'); ?>
+                    <?php $this->render_input_row($options, 'global_section_padding_mobile', 'Global Section Padding Mobile (example: 28px 15px)'); ?>
                 <h2>Hero Responsive Controls</h2>
                 <table class="form-table" role="presentation">
                     <?php $this->render_input_row($options, 'hero_desktop_heading_size', 'Desktop Hero Heading Font Size (example: clamp(1.8rem, 4vw, 2.8rem))'); ?>
@@ -133,6 +187,7 @@ class VoipOfficeHomepagePlugin {
                         <td><input type="number" min="320" max="1920" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hero_stack_breakpoint]" value="<?php echo esc_attr($options['hero_stack_breakpoint']); ?>" class="small-text"></td>
                     </tr>
                     <tr>
+                        <th scope="row">Force stacked hero at breakpoint</th>
                         <th scope="row">Force stacked layout at breakpoint</th>
                         <td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hero_force_stacked_mobile]" value="1" <?php checked($options['hero_force_stacked_mobile'], 1); ?>> Enable</label></td>
                     </tr>
@@ -146,6 +201,21 @@ class VoipOfficeHomepagePlugin {
                     <?php $this->render_input_row($options, 'color_white', 'White Color'); ?>
                 </table>
 
+                <h2>Link/Button Decorations</h2>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row">Remove underline from buttons/CTAs</th>
+                        <td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[remove_button_underline]" value="1" <?php checked($options['remove_button_underline'], 1); ?>> Enable</label></td>
+                    </tr>
+                </table>
+
+                <h2>Edit Every Single Thing (Full Template)</h2>
+                <p>This is the full homepage HTML source. You can edit any text, section, link, class, ID, or embedded shortcode here.</p>
+                <?php $this->render_textarea_row($options, 'template_html', 'Template HTML', 30, 'large-text code'); ?>
+
+                <h2>Responsive Custom CSS</h2>
+                <?php $this->render_textarea_row($options, 'responsive_css_tablet', 'Tablet CSS Override', 8, 'large-text code'); ?>
+                <?php $this->render_textarea_row($options, 'responsive_css_mobile', 'Mobile CSS Override', 8, 'large-text code'); ?>
                 <h2>Full Homepage Template (All options)</h2>
                 <p>Everything from your original HTML is available here. You can edit any section content from the dashboard.</p>
                 <?php $this->render_textarea_row($options, 'template_html', 'Template HTML', 20, 'large-text code'); ?>
@@ -190,6 +260,7 @@ class VoipOfficeHomepagePlugin {
         }
 
         $body = preg_replace('/<section id="hero">.*?<\/section>/is', $this->get_hero_section_html($options), $body, 1);
+        $body = $this->apply_image_overrides($body, $options);
 
         $dynamic_css = $this->get_dynamic_css($options);
 
@@ -206,6 +277,38 @@ class VoipOfficeHomepagePlugin {
         return $output;
     }
 
+    private function extract_template_images($template_html) {
+        $results = array();
+
+        if (preg_match_all('/<img\b[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>/i', $template_html, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $index => $match) {
+                $results[] = array(
+                    'index' => $index,
+                    'original_src' => $match[1],
+                );
+            }
+        }
+
+        return $results;
+    }
+
+    private function apply_image_overrides($html, $options) {
+        $image_overrides = isset($options['image_overrides']) && is_array($options['image_overrides']) ? $options['image_overrides'] : array();
+        $counter = 0;
+
+        return preg_replace_callback('/<img\b[^>]*>/i', function ($img_match) use (&$counter, $image_overrides) {
+            $img_tag = $img_match[0];
+            $replacement = isset($image_overrides[$counter]) ? trim($image_overrides[$counter]) : '';
+
+            if ($replacement !== '') {
+                $img_tag = preg_replace('/\bsrc=["\'][^"\']*["\']/i', 'src="' . esc_url($replacement) . '"', $img_tag, 1);
+            }
+
+            $counter++;
+            return $img_tag;
+        }, $html);
+    }
+
     private function get_dynamic_css($options) {
         $base_css = '';
         if (preg_match('/<style>(.*?)<\/style>/is', $options['template_html'], $style_match)) {
@@ -219,6 +322,21 @@ class VoipOfficeHomepagePlugin {
             }
         " : '';
 
+        $button_underline_rule = $options['remove_button_underline'] ? "
+            .cta-button,
+            .feature-cta,
+            .solution-cta,
+            .video-cta-link,
+            .final-cta-button,
+            .hero-cta-group a,
+            .final-cta-group a {
+                text-decoration: none !important;
+            }
+        " : '';
+
+        $tablet_bp = absint($options['tablet_breakpoint']);
+        $mobile_bp = absint($options['mobile_breakpoint']);
+
         $override_css = "
             :root {
                 --color-dark-primary: {$options['color_dark_primary']};
@@ -226,6 +344,26 @@ class VoipOfficeHomepagePlugin {
                 --color-light-gray: {$options['color_light_gray']};
                 --color-white: {$options['color_white']};
             }
+            body { font-size: {$options['global_base_font_desktop']}; }
+            section { padding: {$options['global_section_padding_desktop']}; }
+            #hero { padding: {$options['hero_desktop_padding']} !important; }
+            #hero .hero-text h1 { font-size: {$options['hero_desktop_heading_size']} !important; }
+            @media (max-width: {$tablet_bp}px) {
+                body { font-size: {$options['global_base_font_tablet']}; }
+                section { padding: {$options['global_section_padding_tablet']}; }
+                #hero { padding: {$options['hero_tablet_padding']} !important; }
+                #hero .hero-text h1 { font-size: {$options['hero_tablet_heading_size']} !important; }
+                {$options['responsive_css_tablet']}
+            }
+            @media (max-width: {$mobile_bp}px) {
+                body { font-size: {$options['global_base_font_mobile']}; }
+                section { padding: {$options['global_section_padding_mobile']}; }
+                #hero { padding: {$options['hero_mobile_padding']} !important; }
+                #hero .hero-text h1 { font-size: {$options['hero_mobile_heading_size']} !important; }
+                {$options['responsive_css_mobile']}
+            }
+            {$stack_rule}
+            {$button_underline_rule}
             #hero { padding: {$options['hero_desktop_padding']} !important; }
             #hero .hero-text h1 { font-size: {$options['hero_desktop_heading_size']} !important; }
             @media (max-width: 992px) {
@@ -298,6 +436,15 @@ class VoipOfficeHomepagePlugin {
             'color_accent' => '#fca311',
             'color_light_gray' => '#e5e5e5',
             'color_white' => '#ffffff',
+            'desktop_breakpoint' => '1200',
+            'tablet_breakpoint' => '992',
+            'mobile_breakpoint' => '768',
+            'global_base_font_desktop' => '16px',
+            'global_base_font_tablet' => '15px',
+            'global_base_font_mobile' => '14px',
+            'global_section_padding_desktop' => '60px 30px',
+            'global_section_padding_tablet' => '40px 20px',
+            'global_section_padding_mobile' => '28px 15px',
             'hero_desktop_heading_size' => 'clamp(1.8rem, 4vw, 2.8rem)',
             'hero_tablet_heading_size' => '2rem',
             'hero_mobile_heading_size' => '1.5rem',
@@ -306,6 +453,11 @@ class VoipOfficeHomepagePlugin {
             'hero_mobile_padding' => '28px 15px 28px',
             'hero_stack_breakpoint' => 992,
             'hero_force_stacked_mobile' => 1,
+            'remove_button_underline' => 1,
+            'image_overrides' => array(),
+            'template_html' => $template_html,
+            'responsive_css_tablet' => '',
+            'responsive_css_mobile' => '',
             'template_html' => $template_html,
             'custom_css' => '',
             'custom_js' => "document.addEventListener('DOMContentLoaded', function() {\n    const tabs = document.querySelectorAll('.tab-button');\n    const contents = document.querySelectorAll('.industry-content');\n    tabs.forEach(tab => {\n        tab.addEventListener('click', () => {\n            tabs.forEach(t => t.classList.remove('active'));\n            contents.forEach(c => c.classList.remove('active'));\n            tab.classList.add('active');\n            const targetId = tab.dataset.industry;\n            const targetContent = document.getElementById(targetId);\n            if (targetContent) targetContent.classList.add('active');\n        });\n    });\n});\nwindow.showForm = function(formType) {\n    const allForms = document.querySelectorAll('.form-container');\n    allForms.forEach(form => form.classList.remove('active-form'));\n    const allButtons = document.querySelectorAll('.form-tab-button');\n    allButtons.forEach(button => button.classList.remove('active'));\n    const selectedForm = document.getElementById(formType + '-form');\n    if (selectedForm) selectedForm.classList.add('active-form');\n    const selectedButton = document.getElementById(formType + '-tab');\n    if (selectedButton) selectedButton.classList.add('active');\n    const formSection = document.getElementById('contact-form');\n    if (formSection) {\n        const targetPosition = formSection.getBoundingClientRect().top + window.pageYOffset - 10;\n        window.scrollTo({ top: targetPosition, behavior: 'smooth' });\n    }\n};",
