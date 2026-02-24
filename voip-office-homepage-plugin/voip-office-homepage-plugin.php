@@ -3,6 +3,7 @@
  * Plugin Name: VoIP Office Homepage Builder
  * Description: Converts a static VoIP Office homepage into a shortcode-driven WordPress plugin with dashboard-managed options.
  * Version: 1.1.0
+ * Version: 1.0.0
  * Author: VoIP Office
  */
 
@@ -62,6 +63,7 @@ class VoipOfficeHomepagePlugin {
             'desktop_breakpoint', 'tablet_breakpoint', 'mobile_breakpoint',
             'global_section_padding_desktop', 'global_section_padding_tablet', 'global_section_padding_mobile',
             'global_base_font_desktop', 'global_base_font_tablet', 'global_base_font_mobile'
+            'hero_desktop_padding', 'hero_tablet_padding', 'hero_mobile_padding'
         );
 
         foreach ($text_fields as $field) {
@@ -90,6 +92,7 @@ class VoipOfficeHomepagePlugin {
                 $output['image_overrides'][$index] = esc_url_raw($url);
             }
         }
+        $output['hero_force_stacked_mobile'] = !empty($input['hero_force_stacked_mobile']) ? 1 : 0;
 
         if (current_user_can('unfiltered_html')) {
             $output['template_html'] = (string) $output['template_html'];
@@ -171,6 +174,8 @@ class VoipOfficeHomepagePlugin {
                     <?php $this->render_input_row($options, 'global_section_padding_desktop', 'Global Section Padding Desktop (example: 60px 30px)'); ?>
                     <?php $this->render_input_row($options, 'global_section_padding_tablet', 'Global Section Padding Tablet (example: 40px 20px)'); ?>
                     <?php $this->render_input_row($options, 'global_section_padding_mobile', 'Global Section Padding Mobile (example: 28px 15px)'); ?>
+                <h2>Hero Responsive Controls</h2>
+                <table class="form-table" role="presentation">
                     <?php $this->render_input_row($options, 'hero_desktop_heading_size', 'Desktop Hero Heading Font Size (example: clamp(1.8rem, 4vw, 2.8rem))'); ?>
                     <?php $this->render_input_row($options, 'hero_tablet_heading_size', 'Tablet Hero Heading Font Size (example: 2rem)'); ?>
                     <?php $this->render_input_row($options, 'hero_mobile_heading_size', 'Mobile Hero Heading Font Size (example: 1.5rem)'); ?>
@@ -183,6 +188,7 @@ class VoipOfficeHomepagePlugin {
                     </tr>
                     <tr>
                         <th scope="row">Force stacked hero at breakpoint</th>
+                        <th scope="row">Force stacked layout at breakpoint</th>
                         <td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hero_force_stacked_mobile]" value="1" <?php checked($options['hero_force_stacked_mobile'], 1); ?>> Enable</label></td>
                     </tr>
                 </table>
@@ -210,6 +216,9 @@ class VoipOfficeHomepagePlugin {
                 <h2>Responsive Custom CSS</h2>
                 <?php $this->render_textarea_row($options, 'responsive_css_tablet', 'Tablet CSS Override', 8, 'large-text code'); ?>
                 <?php $this->render_textarea_row($options, 'responsive_css_mobile', 'Mobile CSS Override', 8, 'large-text code'); ?>
+                <h2>Full Homepage Template (All options)</h2>
+                <p>Everything from your original HTML is available here. You can edit any section content from the dashboard.</p>
+                <?php $this->render_textarea_row($options, 'template_html', 'Template HTML', 20, 'large-text code'); ?>
 
                 <h2>Optional Custom CSS / JS</h2>
                 <?php $this->render_textarea_row($options, 'custom_css', 'Custom CSS', 8, 'large-text code'); ?>
@@ -355,6 +364,17 @@ class VoipOfficeHomepagePlugin {
             }
             {$stack_rule}
             {$button_underline_rule}
+            #hero { padding: {$options['hero_desktop_padding']} !important; }
+            #hero .hero-text h1 { font-size: {$options['hero_desktop_heading_size']} !important; }
+            @media (max-width: 992px) {
+                #hero { padding: {$options['hero_tablet_padding']} !important; }
+                #hero .hero-text h1 { font-size: {$options['hero_tablet_heading_size']} !important; }
+            }
+            @media (max-width: 768px) {
+                #hero { padding: {$options['hero_mobile_padding']} !important; }
+                #hero .hero-text h1 { font-size: {$options['hero_mobile_heading_size']} !important; }
+            }
+            {$stack_rule}
             {$options['custom_css']}
         ";
 
@@ -438,6 +458,7 @@ class VoipOfficeHomepagePlugin {
             'template_html' => $template_html,
             'responsive_css_tablet' => '',
             'responsive_css_mobile' => '',
+            'template_html' => $template_html,
             'custom_css' => '',
             'custom_js' => "document.addEventListener('DOMContentLoaded', function() {\n    const tabs = document.querySelectorAll('.tab-button');\n    const contents = document.querySelectorAll('.industry-content');\n    tabs.forEach(tab => {\n        tab.addEventListener('click', () => {\n            tabs.forEach(t => t.classList.remove('active'));\n            contents.forEach(c => c.classList.remove('active'));\n            tab.classList.add('active');\n            const targetId = tab.dataset.industry;\n            const targetContent = document.getElementById(targetId);\n            if (targetContent) targetContent.classList.add('active');\n        });\n    });\n});\nwindow.showForm = function(formType) {\n    const allForms = document.querySelectorAll('.form-container');\n    allForms.forEach(form => form.classList.remove('active-form'));\n    const allButtons = document.querySelectorAll('.form-tab-button');\n    allButtons.forEach(button => button.classList.remove('active'));\n    const selectedForm = document.getElementById(formType + '-form');\n    if (selectedForm) selectedForm.classList.add('active-form');\n    const selectedButton = document.getElementById(formType + '-tab');\n    if (selectedButton) selectedButton.classList.add('active');\n    const formSection = document.getElementById('contact-form');\n    if (formSection) {\n        const targetPosition = formSection.getBoundingClientRect().top + window.pageYOffset - 10;\n        window.scrollTo({ top: targetPosition, behavior: 'smooth' });\n    }\n};",
         );
